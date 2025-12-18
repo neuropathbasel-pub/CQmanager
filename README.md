@@ -100,7 +100,7 @@ CQmanager automates analysis via HTTP POST and GET requests, integrating with cu
 >If bin_size, min_probes_per_bin, or preprocessing_method are omitted in POST requests, defaults are used: 50000, 20, and illumina, respectively.
 
 Available endpoints:
-# FIXME: describe parameters for each endpoint in the HTTP POST data
+
 1. Queue IDAT pair analysis:
 ``` bash
 curl -X POST "http://localhost:8002/CQmanager/analyse/" \
