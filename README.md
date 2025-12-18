@@ -25,6 +25,12 @@ Use is explicitly restricted to academic and non-for-profit organizations.
 Install [Python3.11](https://www.python.org/downloads/release/python-3110/) for your platform (works also with python 3.10 and 3.12).
 You can find installation guide [here](https://docs.python.org/3/using/unix.html) or [here](https://docs.python-guide.org/starting/install3/linux/) or [here](https://phoenixnap.com/kb/how-to-install-python-3-ubuntu).
 
+The installations depend also on git, which you can install in your terminal (on Ubuntu), if missing, as follows:
+
+``` bash
+sudo apt update && sudo apt install git-all
+```
+
 ## Install CQmanager with uv
 
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you did not do it yet.
