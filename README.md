@@ -47,6 +47,10 @@ uv init cqmanager && cd cqmanager && uv venv --python 3.11 && uv pip install "gi
 ``` bash
 /usr/bin/python3.11 -m venv .venv
 ```
+or 
+``` bash
+python3.11 -m venv .venv
+```
 3. Activate the virtual environment:
 ``` bash
 source .venv/bin/activate
