@@ -92,6 +92,7 @@ run_cqmanager
 # CQmanager functionality
 
 CQmanager automates analysis via HTTP POST and GET requests, integrating with custom scripts. It uses Pydantic to reject invalid requests.
+CQmanager will download missing CQcalc, CQcase, CQall, and CQall_plotter containers from Docker Hub before starting any of the containers.
 
 >[!WARNING]
 >CQcalc and CQmanager require case-sensitive IDAT suffixes _Red.idat and _Grn.idat. Files like _RED.IDAT or _red.idat will not be processed.
