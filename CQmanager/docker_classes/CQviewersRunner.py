@@ -1,11 +1,12 @@
 import logging
 import os
 import traceback
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional
 
 from CnQuant_utilities.console_output import print_in_color
 from docker.errors import APIError, DockerException, ImageNotFound, NotFound
 from docker.models.containers import Container
+from numpy import int16
 
 from CQmanager.core.config import config
 from CQmanager.core.logging import logger
@@ -232,7 +233,7 @@ class CQviewersRunner:
 
             return ",".join([container for container in containers]), 200
 
-        except DockerException:
+        except (DockerException, Exception):
             error_string = traceback.format_exc()
             logger.error(msg=error_string)
             return error_string, 500
@@ -405,10 +406,12 @@ class CQviewersRunner:
         client.close()
         return stopped_containers, 200
 
-    def remove_non_running_containers(self) -> str:
+    def remove_non_running_containers(self) -> tuple[bool, int]:
         """
         Remove all non-running Docker containers using the Docker SDK.
         """
+        container_cleanup_successful: bool = False
+        removed_count: int = 0
         try:
             client = get_docker_client(
                 user=self.CQviewers_user,
@@ -417,38 +420,40 @@ class CQviewersRunner:
             )
         except Exception:
             error = traceback.format_exc()
-            logger.error(msg=error)
-            raise Exception(error)
+            logger.critical(msg=error)
+
+            # The -1 notifies that there is an error connecting to Docker
+            return container_cleanup_successful, -1
 
         try:
             # List all containers (including stopped ones)
-            containers = client.containers.list(all=True)
-            removed_count = 0
-            for container in containers:
-                # Check if container is not running
-                if container.status != "running":
-                    try:
-                        logger.info(
-                            msg=f"Removing container {container.name} (ID: {container.id}, Status: {container.status})"
-                        )
-                        container.remove()
-                        removed_count += 1
-                    except APIError:
-                        error = traceback.format_exc()
-                        logger.info(
-                            msg=f"Failed to remove container {container.name} (ID: {container.id}): {error}"
-                        )
-            return f"Removed {removed_count} non-running containers"
+            all_containers = client.containers.list(all=True)
+            non_running_containers = [
+                c for c in all_containers if c.status != "running"
+            ]
 
-        except DockerException:
+            for container in non_running_containers:
+                try:
+                    logger.info(
+                        msg=f"Removing container {container.name} (ID: {container.id}, Status: {container.status})"
+                    )
+                    container.remove()
+                    removed_count += 1
+                except (APIError, DockerException, Exception):
+                    error = traceback.format_exc()
+                    logger.info(
+                        msg=f"Failed to remove container {container.name} (ID: {container.id}): {error}"
+                    )
+            else:  # Runs if loop completes (no exceptions in removals)
+                container_cleanup_successful = True
+
+        except (DockerException, Exception):
             error = traceback.format_exc()
-            logger.warning(msg=f"Error connecting to Docker: {error}")
-        except Exception:
-            error = traceback.format_exc()
-            logger.warning(msg=f"Unexpected error: {error}")
+            logger.error(msg=f"Error connecting to Docker: {error}")
         finally:
             client.close()
-        return "Containers cleanup failed"
+
+        return container_cleanup_successful, removed_count
 
     def __str__(self):
         return "CQviewersRunner()"

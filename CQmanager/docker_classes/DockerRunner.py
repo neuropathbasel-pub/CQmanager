@@ -5,11 +5,13 @@ from typing import TYPE_CHECKING
 import docker
 from docker.errors import APIError, NotFound
 from docker.types import LogConfig
-from icecream import ic
+
+# from icecream import ic
 from requests.exceptions import HTTPError
 
 from CQmanager.core.config import AppConfig
-from CQmanager.core.logging import logger
+
+# from CQmanager.core.logging import logger
 from CQmanager.docker_classes.docker_functions import (
     pull_docker_images_if_not_available_locally,
 )
@@ -37,6 +39,7 @@ class DockerRunner:
         cqcalc_and_cqall_plotter_environment_variables: dict[str, str] = (
             cqcalc_and_cqall_plotter_environment_variables
         ),
+        cqall_plotter_container_name_prefix: str = cqall_plotter_container_name_prefix,
     ):
         self.cqcalc_image: str = config.cqcalc_image
         self.cqall_plotter_image: str = config.cqall_plotter_image
@@ -53,6 +56,7 @@ class DockerRunner:
         self.REMOTE_GROUP_ID: int = config.REMOTE_GROUP_ID
         self.detach_containers = config.detach_containers
         self.autoremove_containers = config.autoremove_containers
+        self.cqall_plotter_container_name_prefix = cqall_plotter_container_name_prefix
 
     def check_if_docker_images_are_downloaded(self) -> None:
         try:
@@ -60,7 +64,7 @@ class DockerRunner:
 
         except Exception:
             error = traceback.format_exc()
-            logger.error(msg=f"Error in DockerRunner init.\n:{error}")
+            self.logger.error(msg=f"Error in DockerRunner init.\n:{error}")
             client = None
 
         if client is not None:
@@ -121,6 +125,42 @@ class DockerRunner:
         finally:
             client.close()
 
+    def is_container_with_prefix_running(self, name_prefix: str) -> bool:
+        """
+        Check if any container with a name starting with the given prefix is running.
+
+        Args:
+            name_prefix (str): Prefix to match against container names.
+
+        Returns:
+            bool: True if at least one running container matches the prefix, False otherwise.
+        """
+        client = docker.from_env()
+        try:
+            # Get all running containers
+            running_containers = client.containers.list(filters={"status": "running"})
+
+            # Check if any container name starts with the prefix
+            for container in running_containers:
+                if container.name.startswith(name_prefix):
+                    self.logger.info(
+                        msg=f"Found running container '{container.name}' matching prefix '{name_prefix}'"
+                    )
+                    return True
+
+            self.logger.debug(
+                msg=f"No running containers found with prefix '{name_prefix}'"
+            )
+            return False
+
+        except Exception as e:
+            self.logger.error(
+                msg=f"Error checking containers with prefix '{name_prefix}': {e}"
+            )
+            return False
+        finally:
+            client.close()
+
     def generate_manifest_parquet_files(
         self,
         execution_command: str,
@@ -150,15 +190,15 @@ class DockerRunner:
         except APIError:
             error_string = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error_string}"
-            logger.error(msg=message)
+            self.logger.error(msg=message)
         except HTTPError:
             error = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error}"
-            logger.error(msg=error)
+            self.logger.error(msg=error)
         except Exception:
             error = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error}"
-            logger.error(msg=error)
+            self.logger.error(msg=error)
         client.close()
 
     def start_analysis_container(
@@ -202,22 +242,22 @@ class DockerRunner:
         except APIError:
             error_string = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error_string}"
-            logger.error(msg=message)
+            self.logger.error(msg=message)
         except HTTPError:
             error = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error}"
-            logger.error(msg=error)
+            self.logger.error(msg=error)
         except Exception:
             error = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error}"
-            logger.error(msg=error)
+            self.logger.error(msg=error)
         client.close()
 
     def start_cqall_plotter_container(
         self,
         execution_command: str,
         container_name: str,
-    ) -> None:
+    ) -> str:
         """Start a Docker container for cqall plotter with specified configuration.
 
         Args:
@@ -227,9 +267,16 @@ class DockerRunner:
         Raises:
             APIError: If the container fails to start, logs the error.
         """
+        # TODO: Improve return messages
         client = docker.from_env()
+        if self.is_container_with_prefix_running(
+            name_prefix=self.cqall_plotter_container_name_prefix
+        ):
+            message: str = f"A cqall_plotter container with prefix {self.cqall_plotter_container_name_prefix} is already running. Not starting a new one."
+            self.logger.info(msg=message)
+            return message
         try:
-            logger.debug(
+            self.logger.debug(
                 msg=f"Starting cqall_plotter container from the image {self.cqall_plotter_image} with execution command: {execution_command}"
             )
             client.containers.run(
@@ -245,22 +292,26 @@ class DockerRunner:
                 environment=self.cqcalc_and_cqall_plotter_environment_variables,
                 user=f"{self.user_id}:{self.group_id}",
             )
-            logger.debug(msg="Started cqall_plotter container")
+            self.logger.debug(msg="Started cqall_plotter container")
+            message: str = f"Started cqall_plotter container {container_name}."
+            return message
 
         except APIError:
             error = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error}"
-            logger.error(msg=message)
+            self.logger.error(msg=message)
         except HTTPError:
             error = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error}"
-            logger.error(msg=error)
+            self.logger.error(msg=error)
         except Exception:
             error = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error}"
-            logger.error(msg=error)
+            self.logger.error(msg=error)
         finally:
             client.close()
+
+        return message
 
     def return_running_containers(
         self, container_name_prefix: str, return_names: bool = False
@@ -314,25 +365,25 @@ class DockerRunner:
                 if container.name.startswith(container_name_prefix):
                     container.stop()
                     stopped_containers += [str(container.name)]
-                    logger.info(
+                    self.logger.info(
                         msg=f"Stopped container: {container.id} ({container.name})"
                     )
             except APIError:
                 error = traceback.format_exc()
-                logger.error(msg=error)
+                self.logger.error(msg=error)
             except HTTPError:
                 error = traceback.format_exc()
-                logger.error(msg=error)
+                self.logger.error(msg=error)
             except Exception:
                 error = traceback.format_exc()
-                logger.error(msg=error)
+                self.logger.error(msg=error)
 
         client.close()
         return stopped_containers
 
     def stop_summary_plotting_container(
         self, container_name=cqall_plotter_container_name_prefix
-    ) -> str:
+    ) -> tuple[int, str]:
         """Stop running Docker containers with a given name prefix and return status.
 
         Args:
@@ -354,21 +405,24 @@ class DockerRunner:
             try:
                 for container_to_stop in container_to_stop_names:
                     client.containers.get(container_id=container_to_stop).stop()
-                return_status: str = (
+                return_message: str = (
                     "Stopped all Summary Plotting containers managed by CQmanager"
                 )
+                status_code: int = 200
             except Exception:
                 error = traceback.format_exc()
-                logger.error(msg=error)
-                return_status: str = error
+                self.logger.error(msg=error)
+                return_message: str = error
+                status_code: int = 500
 
         else:
-            return_status: str = (
+            return_message: str = (
                 "There were no Summary Plotting containers managed by CQmanager"
             )
+            status_code: int = 200
 
         client.close()
-        return return_status
+        return status_code, return_message
 
     def __str__(self):
         return "DockerRunner()"

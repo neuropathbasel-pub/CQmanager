@@ -94,7 +94,7 @@ class AppConfig(BaseSettings):
     cqcase_host_app_port: int = 8052
     cqall_host_app_port: int = 8050
     email_notification_port: int = 587
-    REDIS_HOST: str = "localhost"
+    REDIS_HOST: str = "cnquant_redis"
     REDIS_PORT: int = 8052
     CACHING_DB_cqcase: int = 0
     CACHING_DB_cqall: int = 1

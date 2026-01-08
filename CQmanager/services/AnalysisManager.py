@@ -452,7 +452,7 @@ class AnalysisManager:
                     min_probes_per_bin = key_elements[1]
 
                     self.logger.info(
-                        msg=f"{datetime.now().strftime('%Y-%m-%d:%H:%M:%S')}: Submitted a batch of {number_of_sentrix_ids} Sentrix IDs for CNV analysis with {preprocessing_method} preprocessing, bin sizes of {bin_size}, minimum probes per bin of {min_probes_per_bin} and {downsizing_string}"
+                        msg=f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Submitted a batch of {number_of_sentrix_ids} Sentrix IDs for CNV analysis with {preprocessing_method} preprocessing, bin sizes of {bin_size}, minimum probes per bin of {min_probes_per_bin} and {downsizing_string}"
                     )
                     continue
 

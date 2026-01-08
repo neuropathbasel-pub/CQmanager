@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from cnquant_dependencies.enums.PreprocessingMethods import PreprocessingMethods
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -20,6 +22,9 @@ class CQdownsizeAnnotatedSamples(BaseModel):
         description="Min probes per bin for cnv analysis",
     )
     type: str = Field(default="")
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    )
 
     @field_validator("preprocessing_method")
     @classmethod

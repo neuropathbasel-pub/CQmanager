@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from cnquant_dependencies.enums.CommonArrayType import CommonArrayType
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -38,6 +40,9 @@ class CQmissingSettings(BaseModel):
         description="Min probes per bin for cnv analysis",
     )
     type: str = Field(default="")
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    )
 
     @field_validator("preprocessing_method")
     @classmethod
@@ -80,7 +85,8 @@ class CQmissingSettings(BaseModel):
         """Allow dict-like access to fields."""
         if hasattr(self, key):
             return getattr(self, key)
-        raise KeyError(f"'{key}' is not a valid field")
+        else:
+            raise KeyError(f"'{key}' is not a valid field")
 
     def __setitem__(self, key: str, value):
         """Allow dict-like setting of fields."""

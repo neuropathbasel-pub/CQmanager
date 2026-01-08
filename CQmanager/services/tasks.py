@@ -1,8 +1,10 @@
 from CQmanager.core.config import config
 from CQmanager.core.logging import docker_log_config, logger
-from CQmanager.docker_classes.CQviewersRunner import CQviewersRunner
-from CQmanager.docker_classes.DockerRunner import DockerRunner
+
+# from CQmanager.docker_classes.CQviewersRunner import CQviewersRunner
+# from CQmanager.docker_classes.DockerRunner import DockerRunner
 from CQmanager.services.AnalysisManager import AnalysisManager
+from CQmanager.services.FileCleaner import FileCleaner
 from CQmanager.services.SummaryPlotter import SummaryPlotter
 from CQmanager.services.TaskQueue import TaskQueue
 
@@ -17,5 +19,8 @@ analysis_manager = AnalysisManager(
     CQ_manager_batch_timeout=config.CQ_manager_batch_timeout,
     process_not_ready_data_intervals=config.process_not_ready_data_intervals,
 )
-
-
+file_cleaner = FileCleaner(
+    results_directory=config.results_directory,
+    temp_directory=config.temp_directory,
+    logger=logger,
+)

@@ -1,26 +1,15 @@
 import os
 import traceback
+from typing import Optional
 
-import paramiko
 import polars as pl
 import requests
-from fastapi import APIRouter, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request, status
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from CQmanager.core.config import config
 from CQmanager.core.logging import logger
-
-
-def scp_file(host: str, username: str, local_path: str, remote_path: str):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(policy=paramiko.AutoAddPolicy())
-    ssh.connect(hostname=host, username=username)
-
-    with ssh.open_sftp() as sftp:
-        sftp.put(localpath=local_path, remotepath=remote_path)
-
-    ssh.close()
-
+from CQmanager.utilities.endpoint_utilities import detect_cli_client, scp_file
 
 router = APIRouter(
     prefix="/CQmanager",
@@ -28,32 +17,27 @@ router = APIRouter(
 
 
 @router.get(path="/update_sample_annotations/")
-async def update_sample_annotations():
+async def update_sample_annotations(
+    req: Request,
+    format: Optional[str] = None,
+):
     """
     Updates the local sample annotation file by comparing it with an online version.
 
-    This endpoint downloads annotation data from a predefined URL (DATA_ANNOTATION_SHEET)
-    using the `download_annotations` function. It then checks if a local annotation file exists at
-    `reference_annotation_file_path`. If the local file exists, it compares it with the online data:
-    - If the online data is different, the local file is replaced with the online version.
-    - If the online and local data are identical, no changes are made.
-    If the local file does not exist, the online data is downloaded and saved locally if available.
-    The function returns a JSON response indicating the outcome of the operation.
+    Downloads annotation data from a predefined URL and compares it with the local file.
+    If differences exist, replaces the local file and attempts to update the remote server via SCP.
+    Returns a response formatted based on the client type (CLI: plain text, GUI: JSON).
+
+    Args:
+        req (Request): The FastAPI request object.
+        format (Optional[str]): Explicit response format ('json' or 'text'). If None, auto-detects based on client.
 
     Returns:
-        JSONResponse: A JSON response with a message describing the result of the operation
-                      and an HTTP status code of 200.
-
-    Examples:
-        - If the local file is updated:
-            {"content": "Local reference annotation has been replaced with the online data annotation.", "status_code": 200}
-        - If the local file is identical to the online data:
-            {"content": "Your local reference was the same as online. csv file has not been replaced", "status_code": 200}
-        - If the local file is missing and downloaded:
-            {"content": "Data reference annotation file has not been found locally and therefore has been downloaded", "status_code": 200}
-        - If the local file is missing and download fails:
-            {"content": "Data reference annotation has not been found locally and could not have been downloaded.", "status_code": 200}
+        PlainTextResponse or JSONResponse:
+            - PlainTextResponse (for CLI clients): Plain text with status messages.
+            - JSONResponse (for GUI clients): JSON object with 'message' and 'remote_annotation_update_status' keys.
     """
+    is_cli_client: bool = detect_cli_client(req=req, specified_format=format)
 
     online_data_annotation = download_annotations(
         annotation_url=config.DATA_ANNOTATION_SHEET
@@ -73,7 +57,7 @@ async def update_sample_annotations():
                     remote_path=str(config.remote_annotation_file_path),
                 )
                 remote_annotation_update_status: str = (
-                    "Remote sample annotation could not be updated."
+                    "Remote sample annotation has been updated."
                 )
             except Exception:
                 remote_annotation_update_status: str = (
@@ -84,15 +68,13 @@ async def update_sample_annotations():
                     msg=f"Error while trying to send annotation file to the remote server {config.CQviewers_host}:\n{traceback.format_exc()}"
                 )
 
-            return JSONResponse(
-                content=f"Local data annotation has been replaced with the online data annotation.\n{remote_annotation_update_status}",
-                status_code=status.HTTP_200_OK,
-            )
+            message: str = "Local data annotation has been replaced with the online data annotation."
+            status_code: int = status.HTTP_200_OK
+
         else:
-            return JSONResponse(
-                content="Your local data annotation was the same as online. csv file has not been replaced",
-                status_code=status.HTTP_200_OK,
-            )
+            message: str = "Your local data annotation was the same as online. csv file has not been replaced"
+            status_code: int = status.HTTP_200_OK
+            remote_annotation_update_status: str = ""
     else:
         if online_data_annotation is not None:
             online_data_annotation.write_csv(file=config.annotation_file_path)
@@ -104,29 +86,43 @@ async def update_sample_annotations():
                     remote_path=str(config.remote_annotation_file_path),
                 )
                 remote_annotation_update_status: str = (
-                    "Remote sample annotation could not be updated."
+                    "Remote sample annotation has been updated."
                 )
+                message: str = "Data annotation file has not been found locally and therefore has been downloaded."
+                status_code: int = status.HTTP_200_OK
             except Exception:
                 remote_annotation_update_status: str = (
                     "Remote sample annotation could not be updated."
                 )
+                message: str = "Data annotation file has not been found locally and therefore has been downloaded, but remote update failed."
+                status_code: int = status.HTTP_200_OK
                 logger.error(
-                    msg=f"Error while trying to send annotation file to the remote server {config.CQviewers_host}:\n{traceback.format_exc()}"
+                    msg=f"{message}\nRemote server:\n{config.CQviewers_host}.\nError:\n{traceback.format_exc()}"
                 )
 
-            return JSONResponse(
-                content=f"Data annotation file has not been found locally and therefore has been downloaded.\n{remote_annotation_update_status}",
-                status_code=status.HTTP_200_OK,
-            )
         else:
-            return JSONResponse(
-                content="Data annotation file has not been found locally and therefore has been downloaded",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            message: str = "Data annotation has not been found locally and could not have been downloaded."
+            status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
+            remote_annotation_update_status: str = ""
+
+    if is_cli_client:
+        return_message: str = f"{message}\n{remote_annotation_update_status}"
+        return PlainTextResponse(content=return_message, status_code=200)
+    else:
+        return JSONResponse(
+            content={
+                "message": message,
+                "remote_annotation_update_status": remote_annotation_update_status,
+            },
+            status_code=status_code,
+        )
 
 
 @router.get(path="/update_reference_annotations/")
-async def update_reference_annotations():
+async def update_reference_annotations(
+    req: Request,
+    format: Optional[str] = None,
+):
     """
     Updates the local reference annotation file by comparing it with an online version.
 
@@ -152,10 +148,12 @@ async def update_reference_annotations():
         - If the local file is missing and download fails:
             {"content": "Data reference annotation has not been found locally and could not have been downloaded.", "status_code": 200}
     """
+    is_cli_client: bool = detect_cli_client(req=req, specified_format=format)
 
     online_reference_annotation = download_annotations(
         annotation_url=config.REFERENCE_DATA_ANNOTATION_SHEET
     )
+    remote_reference_update_status: str = ""
 
     if os.path.exists(path=config.annotation_file_path):
         local_reference_annotation = pl.read_csv(
@@ -174,26 +172,23 @@ async def update_reference_annotations():
                     local_path=str(config.reference_annotation_file_path),
                     remote_path=str(config.remote_reference_annotation_file_path),
                 )
-                remote_reference_update_status: str = (
+                remote_reference_update_status = (
                     "Remote reference annotation has been updated."
                 )
             except Exception:
-                remote_reference_update_status: str = (
+                remote_reference_update_status = (
                     "Remote reference annotation could not be updated."
                 )
                 logger.error(
                     msg=f"Error while trying to send reference file to the remote server {config.CQviewers_host}:\n{traceback.format_exc()}"
                 )
 
-            return JSONResponse(
-                content=f"Local reference annotation has been replaced with the online data annotation.\n{remote_reference_update_status}",
-                status_code=status.HTTP_200_OK,
-            )
+            message: str = "Local reference annotation has been replaced with the online data annotation."
+            status_code: int = status.HTTP_200_OK
+
         else:
-            return JSONResponse(
-                content="Your local reference was the same as online. csv file has not been replaced.",
-                status_code=status.HTTP_200_OK,
-            )
+            message: str = "Your local reference was the same as online. csv file has not been replaced"
+            status_code: int = status.HTTP_200_OK
 
     else:
         if online_reference_annotation is not None:
@@ -212,22 +207,31 @@ async def update_reference_annotations():
                     "Remote reference annotation has been updated."
                 )
             except Exception:
-                remote_reference_update_status: str = (
+                remote_reference_update_status = (
                     "Remote reference annotation could not be updated."
                 )
                 logger.error(
                     msg=f"Error while trying to send reference file to the remote server {config.CQviewers_host}:\n{traceback.format_exc()}"
                 )
+            message: str = "Data reference annotation file has not been found locally and therefore has been downloaded."
+            status_code: int = status.HTTP_200_OK
 
-            return JSONResponse(
-                content=f"Data reference annotation file has not been found locally and therefore has been downloaded.\n{remote_reference_update_status}",
-                status_code=status.HTTP_200_OK,
-            )
         else:
-            return JSONResponse(
-                content="Data reference annotation has not been found locally and could not have been downloaded.",
-                status_code=status.HTTP_200_OK,
-            )
+            message: str = "Data reference annotation has not been found locally and could not have been downloaded."
+            status_code: int = status.HTTP_200_OK
+
+    if is_cli_client:
+        return PlainTextResponse(
+            content=f"{message}\n{remote_reference_update_status}", status_code=200
+        )
+    else:
+        return JSONResponse(
+            content={
+                "message": message,
+                "remote_reference_update_status": remote_reference_update_status,
+            },
+            status_code=status_code,
+        )
 
 
 def download_annotations(annotation_url: str) -> pl.DataFrame | None:

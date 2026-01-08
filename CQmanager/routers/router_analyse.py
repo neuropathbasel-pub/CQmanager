@@ -1,8 +1,7 @@
-from typing import Union
+from typing import Optional, Union
 
-from cnquant_dependencies.enums.CommonArrayType import CommonArrayType
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from CQmanager.endpoint_models.CQdownsizeAnnotatedSamples import (
     CQdownsizeAnnotatedSamples,
@@ -11,6 +10,7 @@ from CQmanager.endpoint_models.CQmissingSettings import CQmissingSettings
 from CQmanager.endpoint_models.CQsettings import CQsettings
 from CQmanager.services.tasks import analysis_manager, task_queuer
 from CQmanager.services.TaskType import TaskType
+from CQmanager.utilities.endpoint_utilities import detect_cli_client
 
 router = APIRouter(
     prefix="/CQmanager",
@@ -19,25 +19,47 @@ router = APIRouter(
 
 # TODO: Move this logic inside of AnalysisManager
 @router.post(path="/analyse/")
-async def analyse(request: CQsettings):
+async def analyse(
+    request: CQsettings,
+    req: Request,
+    format: Optional[str] = None,
+):
+    is_cli_client: bool = detect_cli_client(req=req, specified_format=format)
     new_task: dict[str, Union[str, CQsettings]] = {
         "type": TaskType.ANALYSE_SENTRIX_IDS_FOR_SUMMARY_PLOTS,
         "data": request,
     }
 
     await task_queuer.task_queue.put(item=new_task)
-    downsizing_to = (
-        f"', and downsizing to ' {request.downsize_to}"
-        if request.downsize_to != CommonArrayType.NO_DOWNSIZING.value
-        else ""
-    )
-    return {
-        "message": f"{request.sentrix_id} will be processed shortly with following settings: min_probes_per_bin {request.min_probes_per_bin}, bin_size {request.bin_size}, preprocessing_method {request.preprocessing_method}{downsizing_to}.",
-    }
+
+    if is_cli_client:
+        message: str = f"Sentrix ID {request.sentrix_id} will be processed shortly with following settings:\n - min_probes_per_bin: {request.min_probes_per_bin},\n - bin_size: {request.bin_size},\n - preprocessing_method: {request.preprocessing_method},\n - downsize_to: {request.downsize_to}.\n"
+        return PlainTextResponse(
+            content=message,
+            status_code=200,
+        )
+    else:
+        message: str = "A new single analysis task has been added to the queue."
+        return JSONResponse(
+            content={
+                "message": message,
+                "sentrix_id": request.sentrix_id,
+                "min_probes_per_bin": request.min_probes_per_bin,
+                "bin_size": request.bin_size,
+                "preprocessing_method": request.preprocessing_method,
+                "downsize_to": request.downsize_to,
+                "timestamp": request.timestamp,
+            },
+            status_code=200,
+        )
 
 
 @router.post(path="/analyse_missing/")
-async def analyse_missing(request: CQmissingSettings):
+async def analyse_missing(
+    request: CQmissingSettings,
+    req: Request,
+    format: Optional[str] = None,
+):
     """Add missing Sentrix IDs to analysis task queue in chunks.
 
     Args:
@@ -47,6 +69,7 @@ async def analyse_missing(request: CQmissingSettings):
         dict: Confirmation message with count of Sentrix IDs and analysis settings.
 
     """
+    is_cli_client: bool = detect_cli_client(req=req, specified_format=format)
     # TODO: First check if the AnalysisManager already has a task with these settings in the queue
     new_task: dict[str, Union[str, CQmissingSettings]] = {
         "type": TaskType.ANALYSE_SENTRIX_IDS_FOR_SUMMARY_PLOTS,
@@ -54,11 +77,28 @@ async def analyse_missing(request: CQmissingSettings):
     }
 
     await task_queuer.task_queue.put(item=new_task)
-    return {
-        "message": f"Missing data will be processed shortly with following settings: min_probes_per_bin {request.min_probes_per_bin}, bin_size {request.bin_size}, preprocessing_method {request.preprocessing_method}"
-    }
+    if is_cli_client:
+        message: str = f"Missing data will be processed shortly with following settings:\n - min_probes_per_bin: {request.min_probes_per_bin},\n - bin_size: {request.bin_size},\n - preprocessing_method: {request.preprocessing_method},\n - downsize_to: {request.downsize_to}.\n"
+        return PlainTextResponse(
+            content=message,
+            status_code=200,
+        )
+    else:
+        message: str = "Missing data has been added to the analysis queue."
+        return JSONResponse(
+            content={
+                "message": message,
+                "min_probes_per_bin": request.min_probes_per_bin,
+                "bin_size": request.bin_size,
+                "preprocessing_method": request.preprocessing_method,
+                "downsize_to": request.downsize_to,
+                "timestamp": request.timestamp,
+            },
+            status_code=200,
+        )
 
 
+# TODO: FIXME: There is a duplication of the endpoints. Decide which stays
 @router.post(path="/downsize_annotated_samples_for_summary_plots/")
 async def downsize_annotated_samples_for_summary_plots(
     request: CQdownsizeAnnotatedSamples,
@@ -105,7 +145,10 @@ async def downsize_annotated_samples_for_summary_plots(
 
 # TODO: FIXME: It seems that this queue length is not as you wish to see
 @router.get(path="/view_analysis_queue/")
-async def view_analysis_queue():
+async def view_analysis_queue(
+    req: Request,
+    format: Optional[str] = None,
+):
     """Add an analysis task to the task queue and register the request.
 
     Args:
@@ -122,8 +165,13 @@ async def view_analysis_queue():
     }
 
 
+# FIXME
 @router.post(path="/empty_analysis_queue/")
-async def empty_analysis_queue(request: CQsettings):
+async def empty_analysis_queue(
+    request: CQsettings,
+    req: Request,
+    format: Optional[str] = None,
+):
     """Add an analysis task to the task queue and register the request.
 
     Args:
