@@ -20,19 +20,11 @@ async def remove_permission_denied_analyses(
     format: Optional[str] = None,
 ):
     is_cli_client: bool = detect_cli_client(req=req, specified_format=format)
-    # success, removed_results = (
-    #     file_cleaner.remove_failed_results_directories_due_to_permission_errors()
-    # )
-
-    # status_code: int = (
-    #     status.HTTP_200_OK if success else status.HTTP_500_INTERNAL_SERVER_ERROR
-    # )
     status_code: int = status.HTTP_501_NOT_IMPLEMENTED
     removed_results: int = 0
     message: str = "This endpoint is not yet implemented."
 
     if is_cli_client:
-        # message: str = f"Removed {removed_results} results directories that failed due to 'permission denied' errors.\n"
         return PlainTextResponse(content=message, status_code=status_code)
     else:
         return JSONResponse(

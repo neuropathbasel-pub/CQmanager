@@ -33,6 +33,24 @@ async def make_summary_plots(
         JSONResponse: Confirmation message with HTTP 200 status code.
     """
     is_cli_client: bool = detect_cli_client(req=req, specified_format=format)
+    is_CQall_plotter_running: bool = (
+        False
+        if docker_runner.check_running_CNV_containers(
+            name_prefix=docker_runner.cqall_plotter_container_name_prefix
+        )
+        == 0
+        else True
+    )
+
+    if is_CQall_plotter_running:
+        message: str = "\nA CQall_plotter container is already running.\nThe new summary plotting task will be added to the queue and processed once the current container has finished.\n"
+        if is_cli_client:
+            return PlainTextResponse(content=message, status_code=200)
+        else:
+            return JSONResponse(
+                content={"message": message, "timestamp": request.timestamp},
+                status_code=200,
+            )
 
     with lock:
         task = {"type": TaskType.SUMMARY_PLOT, "data": request.model_dump()}
@@ -46,9 +64,7 @@ Preprocessing method: {request.preprocessing_method}
 Methylation classes: {request.methylation_classes}
 Bin size: {request.bin_size}
 Min probes per bin: {request.min_probes_per_bin}
-Downsize to: {request.downsize_to}
-
-Note: The CQall_plotter container will only be started if there is no other CQall_plotter container running.\n"""
+Downsize to: {request.downsize_to}\n"""
         return PlainTextResponse(content=message)
     else:
         message: str = f"The make_summary_plots endpoint received a request with the following settings: preprocessing method: {request.preprocessing_method}, methylation classes: {request.methylation_classes}, bin size: {request.bin_size}, min probes per bin: {request.min_probes_per_bin}, downsize to: {request.downsize_to}."

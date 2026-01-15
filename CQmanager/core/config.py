@@ -72,6 +72,7 @@ class AppConfig(BaseSettings):
     rerun_failed_analyses: bool = False
     containers_log_level: str = "info"
     process_not_ready_data_intervals: int = 10
+    endpoint_request_cooldown_interval: int = 60
     # ===========================================
     # Email notification settings
     # ===========================================

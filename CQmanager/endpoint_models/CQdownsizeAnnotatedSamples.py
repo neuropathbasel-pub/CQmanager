@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from cnquant_dependencies.enums.PreprocessingMethods import PreprocessingMethods
 from fastapi import HTTPException
@@ -25,6 +26,7 @@ class CQdownsizeAnnotatedSamples(BaseModel):
     timestamp: str = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     )
+    methylation_class: Optional[str] = Field(default_factory=lambda: None)
 
     @field_validator("preprocessing_method")
     @classmethod

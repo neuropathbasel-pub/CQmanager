@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 import docker
 from docker.errors import APIError, NotFound
 from docker.types import LogConfig
-
-# from icecream import ic
 from requests.exceptions import HTTPError
 
 from CQmanager.core.config import AppConfig
@@ -26,6 +24,7 @@ if TYPE_CHECKING:
     from CQmanager.core.config import AppConfig
 
 
+# TODO: Add a method to check if the summary plotter is running
 class DockerRunner:
     """Class for managing CQcalc and CQall_plotter containers"""
 

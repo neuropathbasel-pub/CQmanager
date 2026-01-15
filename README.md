@@ -172,5 +172,7 @@ curl "http://localhost:8002/CQmanager/update_reference_annotations/"
 ``` bash
 curl "http://localhost:8002/CQmanager/simulate_crash/"
 ```
-
-
+15. Empties the analysis queue for with the jobs for CQcalc
+``` bash
+curl -X POST "http://localhost:8002/CQmanager/empty_analysis_queue/"
+```

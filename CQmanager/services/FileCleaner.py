@@ -3,7 +3,6 @@ from pathlib import Path
 from shutil import rmtree
 
 import orjson
-from icecream import ic
 
 
 class FileCleaner:

@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Optional, cast
+import logging
+from typing import TYPE_CHECKING
 
 import polars as pl
 from cnquant_dependencies.enums.CommonArrayType import CommonArrayType
@@ -70,7 +71,10 @@ async def analyze_single_sentrix_id(task_data: dict):
 
 
 async def get_missing_sentrix_ids_to_analyze(
-    task_data: dict, config, downsize_to: str = CommonArrayType.NO_DOWNSIZING.value
+    task_data: dict,
+    config,
+    downsize_to: str = CommonArrayType.NO_DOWNSIZING.value,
+    logger: logging.Logger = logging.getLogger(name=__name__),
 ) -> list[AnalysisTaskData]:
     preprocessing_method = task_data["preprocessing_method"]
     bin_size = task_data["bin_size"]
@@ -88,7 +92,11 @@ async def get_missing_sentrix_ids_to_analyze(
         rerun_sentrix_ids=config.rerun_failed_analyses,
         downsize_to=downsize_to,
     )
-
+    if downsize_to not in [target.value for target in CommonArrayType.get_members()]:
+        downsize_to = CommonArrayType.NO_DOWNSIZING.value
+        logger.error(
+            msg=f"Invalid downsizing type: {downsize_to}. Using NO_DOWNSIZING instead."
+        )
     list_of_analysis_tasks: list[AnalysisTaskData] = [
         AnalysisTaskData(
             task_data={
@@ -96,7 +104,7 @@ async def get_missing_sentrix_ids_to_analyze(
                 "preprocessing_method": preprocessing_method,
                 "bin_size": bin_size,
                 "min_probes_per_bin": min_probes_per_bin,
-                "downsize_to": CommonArrayType.NO_DOWNSIZING.value,
+                "downsize_to": downsize_to,
             }
         )
         for sentrix_id in set_of_sentrix_ids_to_process
@@ -196,9 +204,9 @@ async def get_missing_annotated_sentrix_ids_to_analyze(
     config: "AppConfig",
     downsize_to: str = CommonArrayType.NO_DOWNSIZING.value,
 ) -> list[AnalysisTaskData]:
-    preprocessing_method = task_data["preprocessing_method"]
-    bin_size = task_data["bin_size"]
-    min_probes_per_bin = task_data["min_probes_per_bin"]
+    preprocessing_method: str = task_data["preprocessing_method"]
+    bin_size: int = task_data["bin_size"]
+    min_probes_per_bin: int = task_data["min_probes_per_bin"]
 
     annotated_sentrix_ids: set[str] = get_annotated_sentrix_ids(config=config)
     reference_sentrix_ids: set[str] = get_reference_sentrix_ids(config=config)

@@ -1,12 +1,9 @@
 import argparse
 import asyncio
-import signal
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from CQmanager.core.config import config
-from CQmanager.handlers.handle_shutdown import handle_shutdown
 from CQmanager.handlers.handlers import global_exception_handler
 from CQmanager.routers.router_analyse import router as analyse_router
 from CQmanager.routers.router_cleanups import router as cleanups_router

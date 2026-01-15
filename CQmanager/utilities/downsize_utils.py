@@ -2,7 +2,7 @@ import asyncio
 from typing import Union
 
 import polars as pl
-from cnquant_dependencies.CommonArrayType import CommonArrayType
+# from cnquant_dependencies.CommonArrayType import CommonArrayType
 
 from CQmanager.core.config import config
 from CQmanager.endpoint_models.CQdownsizeAnnotatedSamples import (
@@ -12,7 +12,7 @@ from CQmanager.endpoint_models.CQmissingSettings import CQmissingSettings
 from CQmanager.endpoint_models.CQsettings import CQsettings
 from CQmanager.services.tasks import analysis_manager
 from CQmanager.services.TaskType import TaskType
-from CQmanager.utilities.utilities import get_sentrix_ids, sentrix_ids_to_process
+# from CQmanager.utilities.utilities import get_sentrix_ids, sentrix_ids_to_process
 
 
 async def perform_downsize_annotated_samples(request: CQdownsizeAnnotatedSamples):

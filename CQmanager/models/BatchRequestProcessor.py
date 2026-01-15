@@ -60,7 +60,6 @@ class BatchRequestProcessor:
         for request in batch_requests:
             if not isinstance(request, dict):
                 raise ValueError("Each batch request must be a dictionary.")
-
             sentrix_id = request.get("sentrix_ids", None)
             min_probes_per_bin = request.get("min_probes_per_bin", 20)
             bin_size = request.get("bin_size", 50000)
@@ -184,9 +183,6 @@ class BatchRequestProcessor:
 
 
 if __name__ == "__main__":
-    from cnquant_dependencies.enums.CommonArrayType import CommonArrayType
-    # from icecream import ic
-
     batch_processor = BatchRequestProcessor()
 
     batch_requests: list[AnalysisTaskData] = [
@@ -244,4 +240,3 @@ if __name__ == "__main__":
     ]
     batch_processor.add_batch_requests(batch_requests=batch_requests)
     queue_length = batch_processor.queue_length()
-    # ic(queue_length)
