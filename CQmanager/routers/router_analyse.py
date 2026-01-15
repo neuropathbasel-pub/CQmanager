@@ -81,7 +81,7 @@ async def analyse_missing(
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={
-                    "message": f"""This endpoint is on cooldown. Please wait a moment before submitting a new request.\nRemaining cooldown time: {cooldown_manager.return_remaining_time(endpoint_name='analyse_missing')} seconds."""
+                    "message": f"This endpoint is on cooldown. Please wait a moment before submitting a new request.\nRemaining cooldown time: {cooldown_manager.return_remaining_time(endpoint_name='analyse_missing')} seconds."
                 },
             )
     else:
@@ -94,7 +94,7 @@ async def analyse_missing(
 
         await task_queuer.task_queue.put(item=new_task)
         if is_cli_client:
-            message: str = f"Missing data will be processed shortly with following settings:\n - min_probes_per_bin: {request.min_probes_per_bin},\n - bin_size: {request.bin_size},\n - preprocessing_method: {request.preprocessing_method},\n - downsize_to: {request.downsize_to}.\n"
+            message: str = f"\nMissing data will be processed shortly with following settings:\n - min_probes_per_bin: {request.min_probes_per_bin},\n - bin_size: {request.bin_size},\n - preprocessing_method: {request.preprocessing_method},\n - downsize_to: {request.downsize_to}.\n"
             return PlainTextResponse(
                 content=message,
                 status_code=status.HTTP_200_OK,
@@ -132,11 +132,10 @@ async def downsize_annotated_samples_for_summary_plots(
                 content=message,
             )
         else:
+            message: str = f"This endpoint is on cooldown. Please wait a moment before submitting a new request.\nRemaining cooldown time: {cooldown_manager.return_remaining_time(endpoint_name='downsize_annotated_samples_for_summary_plots_cooldown')} seconds."
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={
-                    "message": f"""This endpoint is on cooldown. Please wait a moment before submitting a new request.\nRemaining cooldown time: {cooldown_manager.return_remaining_time(endpoint_name='downsize_annotated_samples_for_summary_plots_cooldown')} seconds."""
-                },
+                content={"message": message},
             )
     else:
         new_task: dict[str, Union[str, CQdownsizeAnnotatedSamples]] = {
