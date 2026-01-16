@@ -1,6 +1,6 @@
 import logging
 import traceback
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import docker
 from docker.errors import APIError, NotFound
@@ -39,6 +39,7 @@ class DockerRunner:
             cqcalc_and_cqall_plotter_environment_variables
         ),
         cqall_plotter_container_name_prefix: str = cqall_plotter_container_name_prefix,
+        container_memory_limit: Optional[str] = None,
     ):
         self.cqcalc_image: str = config.cqcalc_image
         self.cqall_plotter_image: str = config.cqall_plotter_image
@@ -56,6 +57,7 @@ class DockerRunner:
         self.detach_containers = config.detach_containers
         self.autoremove_containers = config.autoremove_containers
         self.cqall_plotter_container_name_prefix = cqall_plotter_container_name_prefix
+        self.container_memory_limit = container_memory_limit  # for the future development. For example "10g" for 10 GB hard limit
 
     def check_if_docker_images_are_downloaded(self) -> None:
         try:
@@ -226,7 +228,7 @@ class DockerRunner:
                 command=execution_command,
                 name=container_name,
                 volumes=self.cqcalc_and_cqall_plotter_volumes,
-                detach=self.detach_containers,  # type: ignore
+                detach=self.detach_containers,
                 auto_remove=self.autoremove_containers,
                 userns_mode="host",
                 stdout=True,
@@ -237,7 +239,8 @@ class DockerRunner:
                 user=f"{self.user_id}:{self.group_id}",
                 log_config=log_config,
                 labels={"app": "CQmanager"},
-            )  # type: ignore
+                mem_limit=self.container_memory_limit,
+            )
         except APIError:
             error_string = traceback.format_exc()
             message = f"Failed to run container {container_name}: {error_string}"
@@ -266,7 +269,6 @@ class DockerRunner:
         Raises:
             APIError: If the container fails to start, logs the error.
         """
-        # TODO: Improve return messages
         client = docker.from_env()
         if self.is_container_with_prefix_running(
             name_prefix=self.cqall_plotter_container_name_prefix

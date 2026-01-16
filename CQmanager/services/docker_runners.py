@@ -3,7 +3,9 @@ from CQmanager.core.logging import docker_log_config, logger
 from CQmanager.docker_classes.CQviewersRunner import CQviewersRunner
 from CQmanager.docker_classes.DockerRunner import DockerRunner
 
-docker_runner = DockerRunner(config=config, logger=logger)
+docker_runner = DockerRunner(
+    config=config, logger=logger, container_memory_limit=config.container_memory_limit
+)
 cq_viewers_runner = CQviewersRunner(
     config=config,
     logger=logger,

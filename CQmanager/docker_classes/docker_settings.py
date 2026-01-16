@@ -91,8 +91,7 @@ cqcalc_and_cqall_plotter_volumes: dict[str, dict[str, str]] = {
     },
     str(object=config.log_directory): {"bind": str(config.log_directory), "mode": "rw"},
 }
-# TODO: to update
-# FIXME: DATA_ANNOTATION_SHEET and REFERENCE_DATA_ANNOTATION_SHEET might be removed from cqviewers_environment_variables and cqcalc_and_cqall_plotter_environment_variables
+
 cqcalc_and_cqall_plotter_environment_variables: dict[str, str] = {
     "idat_directory": f"{config.idat_directory}",
     "results_directory": f"{config.results_directory}",
@@ -127,12 +126,9 @@ cqviewers_local_environment_variables: dict[str, str] = {
     "log_directory": f"{config.log_directory}",
     "REDIS_HOST": str(config.REDIS_HOST),
     "REDIS_PORT": str(config.REDIS_PORT),
-    # "cnquant_redis_name": str(config.cnquant_redis_name),
     "CACHING_DB_cqcase": str(config.CACHING_DB_cqcase),
     "CACHING_DB_cqall": str(config.CACHING_DB_cqall),
     "timeout": str(config.gunicorn_timeout),
-    "DATA_ANNOTATION_SHEET": f"{config.DATA_ANNOTATION_SHEET}",
-    "REFERENCE_DATA_ANNOTATION_SHEET": f"{config.REFERENCE_DATA_ANNOTATION_SHEET}",
     "USE_CACHE": str(config.USE_CACHE),
     "server_name": f"{config.server_name}",
 }
@@ -144,12 +140,9 @@ cqviewers_remote_environment_variables: dict[str, str] = {
     "log_directory": f"{config.remote_server_log_directory}",
     "REDIS_HOST": str(config.REDIS_HOST),
     "REDIS_PORT": str(config.REDIS_PORT),
-    # "cnquant_redis_name": str(config.cnquant_redis_name),
     "CACHING_DB_cqcase": str(config.CACHING_DB_cqcase),
     "CACHING_DB_cqall": str(config.CACHING_DB_cqall),
     "timeout": str(config.gunicorn_timeout),
-    "DATA_ANNOTATION_SHEET": f"{config.DATA_ANNOTATION_SHEET}",
-    "REFERENCE_DATA_ANNOTATION_SHEET": f"{config.REFERENCE_DATA_ANNOTATION_SHEET}",
     "USE_CACHE": str(config.USE_CACHE),
     "server_name": f"{config.server_name}",
 }

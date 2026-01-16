@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Optional
 
 from cnquant_dependencies.enums.ArrayType import ArrayType
 from dotenv import load_dotenv
@@ -73,6 +74,7 @@ class AppConfig(BaseSettings):
     containers_log_level: str = "info"
     process_not_ready_data_intervals: int = 10
     endpoint_request_cooldown_interval: int = 60
+    container_memory_limit: Optional[str] = None
     # ===========================================
     # Email notification settings
     # ===========================================
