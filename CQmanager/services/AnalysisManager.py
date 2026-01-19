@@ -27,6 +27,7 @@ from CQmanager.models.AnalysisTaskData import AnalysisTaskData
 from CQmanager.models.BatchRequestProcessor import BatchRequestProcessor
 from CQmanager.service_helpers.AnalysisManager_helpers import (
     analyze_single_sentrix_id,
+    async_get_missing_sentrix_ids_to_analyze,
     get_missing_sentrix_ids_to_analyze,
 )
 from CQmanager.service_helpers.docker_execution_command import make_an_execution_command
@@ -46,8 +47,8 @@ class AnalysisManager:
         config=config,
         logger: logging.Logger = logging.getLogger(name=__name__),
         batch_processor: BatchRequestProcessor = BatchRequestProcessor(),
-        CQ_manager_batch_size: int = 100,
-        CQ_manager_batch_timeout: int = 600,
+        CQmanager_batch_size: int = 100,
+        CQmanager_batch_timeout: int = 600,
         docker_runner=docker_runner,
         recreate_files: bool = False,
     ):
@@ -60,10 +61,31 @@ class AnalysisManager:
         self.lock = asyncio.Lock()
         self.batch_processor: BatchRequestProcessor = batch_processor
         self.annotated_cases_loader = annotated_cases_loader
-        self.CQ_manager_batch_size = CQ_manager_batch_size
-        self.CQ_manager_batch_timeout = CQ_manager_batch_timeout
+        self.CQmanager_batch_size = CQmanager_batch_size
+        self.CQmanager_batch_timeout = CQmanager_batch_timeout
         self.docker_runner = docker_runner
         self.recreate_files: bool = recreate_files
+
+    async def start(self):
+        self.logger.info(msg="Starting AnalysisManager")
+        self.logger.info(msg="Checking for required manifest parquet files")
+
+        self._running = True
+
+        self.logger.debug(msg="Creating process_batch_task")
+        asyncio.create_task(
+            coro=self.process_batch_task()
+        )  # This flag is for testing purposes only
+        self.logger.debug(msg="Process_batch_task created")
+        self.check_for_not_ready_data = True
+        return {"status": "AnalysisManager is ready"}
+
+    async def stop(self):
+        self.logger.info(msg="Stopping AnalysisManager")
+        self._running = False
+        self.check_for_not_ready_data = False
+        await asyncio.sleep(delay=1)
+        self.logger.info(msg="AnalysisManager stopped.")
 
     async def check_and_generate_missing_manifest_files(self):
         # Check if the Illumina manifest parquet files are available
@@ -147,25 +169,6 @@ class AnalysisManager:
 
         return {"status": message}
 
-    async def start(self):
-        self.logger.info(msg="Starting AnalysisManager")
-        self.logger.info(msg="Checking for required manifest parquet files")
-
-        self._running = True
-
-        asyncio.create_task(
-            coro=self.process_batch_task(turned_off=False)
-        )  # This flag is for testing purposes only
-        self.check_for_not_ready_data = True
-        return {"status": "AnalysisManager is ready"}
-
-    async def stop(self):
-        self.logger.info(msg="Stopping AnalysisManager")
-        self._running = False
-        self.check_for_not_ready_data = False
-        await asyncio.sleep(delay=1)
-        self.logger.info(msg="AnalysisManager stopped.")
-
     async def put_task(self, task_data: dict) -> None:
         self.logger.debug(msg=f"Received task data: {task_data}")
         if isinstance(task_data, CQsettings):
@@ -178,7 +181,7 @@ class AnalysisManager:
 
         elif isinstance(task_data, CQmissingSettings):
             # If this is crashing the workers in the future, put it on a separate thread
-            sentrix_ids_to_analyze = await get_missing_sentrix_ids_to_analyze(
+            sentrix_ids_to_analyze = await async_get_missing_sentrix_ids_to_analyze(
                 task_data=task_data, config=config, downsize_to=task_data.downsize_to
             )
             self.batch_processor.add_batch_requests(
@@ -221,7 +224,7 @@ class AnalysisManager:
                 # The case that there is a batch with more than CQ_manager_batch_size sentrix IDs
                 if (
                     self.batch_processor.get_highest_number_of_sentrix_ids()
-                    >= self.CQ_manager_batch_size
+                    >= self.CQmanager_batch_size
                 ):
                     self.logger.debug(
                         msg="Submitting a batch based on CQ_manager_batch_size"
@@ -229,17 +232,19 @@ class AnalysisManager:
                     command_dictionary: Optional[
                         dict[tuple[int, int, str, str], list[str]]
                     ] = self.batch_processor.split_and_return_command_if_exceeds_limit(
-                        limit=self.CQ_manager_batch_size
+                        limit=self.CQmanager_batch_size
                     )
                     if command_dictionary is None:
-                        self.logger.debug("No command dictionary found after splitting")
+                        self.logger.debug(
+                            msg="No command dictionary found after splitting"
+                        )
                         await asyncio.sleep(delay=delay)
                         continue
 
                 # The case that the time passed since last submission is greater than CQ_manager_batch_timeout
                 elif (
                     self.batch_processor.get_highest_number_of_sentrix_ids() > 0
-                    and time_elapsed >= self.CQ_manager_batch_timeout
+                    and time_elapsed >= self.CQmanager_batch_timeout
                 ):
                     self.logger.debug(
                         msg="Submitting a batch based on CQ_manager_batch_timeout"
@@ -279,16 +284,12 @@ class AnalysisManager:
 
                     key_elements = tuple(command_dictionary)[0]
 
-                    if key_elements[3] == "NO_DOWNSIZING":
-                        downsizing_string = "no downsizing"
-                    else:
-                        downsizing_string = f"{key_elements[3]} downsizing method"
                     preprocessing_method = key_elements[2]
                     bin_size = key_elements[0]
                     min_probes_per_bin = key_elements[1]
 
                     self.logger.info(
-                        msg=f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Submitted a batch of {number_of_sentrix_ids} Sentrix IDs for CNV analysis with {preprocessing_method} preprocessing, bin sizes of {bin_size}, minimum probes per bin of {min_probes_per_bin} and {downsizing_string}"
+                        msg=f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Submitted a batch of {number_of_sentrix_ids} Sentrix IDs for CNV analysis with {preprocessing_method} preprocessing, bin sizes of {bin_size}, minimum probes per bin of {min_probes_per_bin} and {key_elements[3]}"
                     )
                     continue
 

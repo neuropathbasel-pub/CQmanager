@@ -10,29 +10,26 @@ class Cooldown:
     ):
         self.logger: logging.Logger = logger
         self.cooldown_interval: int = cooldown_interval
-        self.endpoint_cooldowns: dict[str, int] = {
-            "analyse_missing_cooldown": 0,
-            "downsize_annotated_samples_for_summary_plots_cooldown": 0,
-        }
+        self.endpoint_cooldowns: dict[str, int] = {}
+        self.logger.debug(msg=f"{self.__class__.__name__} instance created")
 
     def is_on_cooldown(self, endpoint_name: str) -> bool:
         if self.endpoint_cooldowns.get(endpoint_name) is None:
-            self.logger.warning(
-                msg=f"Cooldown check for unknown endpoint '{endpoint_name}'."
-            )
+            self.endpoint_cooldowns[endpoint_name] = 0
             return False
 
         current_time: int = int(time.time())
+        last_time = self.endpoint_cooldowns[endpoint_name]
+        on_cooldown = (current_time - last_time) < self.cooldown_interval
+        self.logger.debug(
+            msg=f"Endpoint '{endpoint_name}': current={current_time}, last={last_time}, interval={self.cooldown_interval}, on_cooldown={on_cooldown}"
+        )
 
-        return (
-            current_time - self.endpoint_cooldowns[endpoint_name]
-        ) < self.cooldown_interval
+        return on_cooldown
 
     def update_last_request_time(self, endpoint_name: str) -> None:
         if self.endpoint_cooldowns.get(endpoint_name) is None:
-            self.logger.warning(
-                msg=f"Cooldown update for unknown endpoint '{endpoint_name}'."
-            )
+            self.endpoint_cooldowns[endpoint_name] = 0
             return
         current_time: int = int(time.time())
         self.endpoint_cooldowns[endpoint_name] = current_time

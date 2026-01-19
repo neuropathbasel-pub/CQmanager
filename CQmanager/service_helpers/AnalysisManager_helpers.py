@@ -70,7 +70,49 @@ async def analyze_single_sentrix_id(task_data: dict):
     return list_of_analysis_tasks
 
 
-async def get_missing_sentrix_ids_to_analyze(
+async def async_get_missing_sentrix_ids_to_analyze(
+    task_data: dict,
+    config,
+    downsize_to: str = CommonArrayType.NO_DOWNSIZING.value,
+    logger: logging.Logger = logging.getLogger(name=__name__),
+) -> list[AnalysisTaskData]:
+    preprocessing_method = task_data["preprocessing_method"]
+    bin_size = task_data["bin_size"]
+    min_probes_per_bin = task_data["min_probes_per_bin"]
+
+    reference_sentrix_ids = get_reference_sentrix_ids(config=config)
+
+    set_of_sentrix_ids_to_process: set[str] = sentrix_ids_to_process(
+        idat_directory=config.idat_directory,
+        preprocessing_method=preprocessing_method,
+        reference_sentrix_ids=reference_sentrix_ids,
+        CNV_base_output_directory=config.results_directory,
+        bin_size=bin_size,
+        min_probes_per_bin=min_probes_per_bin,
+        rerun_sentrix_ids=config.rerun_failed_analyses,
+        downsize_to=downsize_to,
+    )
+    if downsize_to not in [target.value for target in CommonArrayType.get_members()]:
+        downsize_to = CommonArrayType.NO_DOWNSIZING.value
+        logger.error(
+            msg=f"Invalid downsizing type: {downsize_to}. Using NO_DOWNSIZING instead."
+        )
+    list_of_analysis_tasks: list[AnalysisTaskData] = [
+        AnalysisTaskData(
+            task_data={
+                "sentrix_id": sentrix_id,
+                "preprocessing_method": preprocessing_method,
+                "bin_size": bin_size,
+                "min_probes_per_bin": min_probes_per_bin,
+                "downsize_to": downsize_to,
+            }
+        )
+        for sentrix_id in set_of_sentrix_ids_to_process
+    ]
+    return list_of_analysis_tasks
+
+
+def get_missing_sentrix_ids_to_analyze(
     task_data: dict,
     config,
     downsize_to: str = CommonArrayType.NO_DOWNSIZING.value,

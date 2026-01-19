@@ -1,6 +1,6 @@
 [project]
 name = "cqmanager"
-version = "3.0.3"
+version = "3.0.4"
 requires-python = ">=3.10, <3.13"
 license = "MIT"
 authors = [{name = "Benjamin Freyter", email = "benjaminmaciej.freyter@usb.ch"}]
@@ -77,7 +77,7 @@ dependencies = [
     "pytest>=8.4.2",
 ]
 
-scripts = { "run_cqmanager" = "CQmanager.run_app:main" }
+scripts = { "run_cqmanager" = "CQmanager.main:main" }
 # dynamic = ["readme"]
 
 [build-system]

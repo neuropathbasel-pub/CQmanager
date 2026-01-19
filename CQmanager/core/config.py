@@ -55,8 +55,10 @@ class AppConfig(BaseSettings):
     # ===========================================
     CQmanager_gunicorn_host_address: str = "127.0.0.1"
     CQmanager_gunicorn_port: int = 8002
-    CQ_manager_batch_timeout: int = 300
-    CQ_manager_batch_size: int = 100
+    CQmanager_batch_timeout: int = 300
+    CQmanager_batch_size: int = 100
+    CQmanager_gunicorn_timeout: int = 120
+    CQmanager_gunicorn_workers: int = 1
     max_number_of_cqcalc_containers: int = 9
     CQviewers_host: str
     CQviewers_user: str

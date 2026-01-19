@@ -15,6 +15,7 @@ class FileCleaner:
         self.results_directory = results_directory
         self.temp_directory = temp_directory
         self.logger = logger
+        self.logger.debug(msg=f"{self.__class__.__name__} instance created")
 
     def remove_temporary_files(self) -> tuple[bool, int]:
         removed_files_count = 0

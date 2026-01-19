@@ -24,8 +24,8 @@ analysis_manager = AnalysisManager(
     annotated_cases_loader=annotated_cases_loader,
     config=config,
     docker_log_config=docker_log_config,
-    CQ_manager_batch_size=config.CQ_manager_batch_size,
-    CQ_manager_batch_timeout=config.CQ_manager_batch_timeout,
+    CQmanager_batch_size=config.CQmanager_batch_size,
+    CQmanager_batch_timeout=config.CQmanager_batch_timeout,
     # process_not_ready_data_intervals=config.process_not_ready_data_intervals,
 )
 file_cleaner = FileCleaner(

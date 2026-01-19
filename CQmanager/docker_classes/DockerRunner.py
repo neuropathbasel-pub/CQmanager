@@ -58,6 +58,7 @@ class DockerRunner:
         self.autoremove_containers = config.autoremove_containers
         self.cqall_plotter_container_name_prefix = cqall_plotter_container_name_prefix
         self.container_memory_limit = container_memory_limit  # for the future development. For example "10g" for 10 GB hard limit
+        self.logger.debug(msg=f"{self.__class__.__name__} instance created")
 
     def check_if_docker_images_are_downloaded(self) -> None:
         try:

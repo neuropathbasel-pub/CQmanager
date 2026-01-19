@@ -10,7 +10,7 @@ logger_instance = AsyncLogger(
     file_log_level=config.log_level,
 )
 logger = logger_instance.get_logger()
-
+logger.debug(msg="Logger instance created")
 
 docker_log_config = LogConfig(
     type="json-file",

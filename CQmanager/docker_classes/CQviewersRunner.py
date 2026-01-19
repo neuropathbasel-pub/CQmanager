@@ -128,6 +128,7 @@ class CQviewersRunner:
             )
         else:
             self.cqviewers_environment_variables = cqviewers_local_environment_variables
+        self.logger.debug(msg=f"{self.__class__.__name__} instance created")
 
         def check_if_docker_images_are_downloaded(self) -> None:
             CQcase_image_dict = self.cnviewers_images_and_commands.get(

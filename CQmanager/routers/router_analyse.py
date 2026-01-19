@@ -69,7 +69,6 @@ async def analyse_missing(
 
     """
     is_cli_client: bool = detect_cli_client(req=req, specified_format=format)
-
     if cooldown_manager.is_on_cooldown(endpoint_name="analyse_missing"):
         if is_cli_client:
             message: str = f"\nThe endpoint 'analyse_missing' is on cooldown.\nPlease wait {cooldown_manager.return_remaining_time(endpoint_name='analyse_missing')} seconds before submitting a new request\n"

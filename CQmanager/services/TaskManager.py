@@ -35,7 +35,10 @@ class TaskManager:
             self.process_task: Optional[asyncio.Task] = None
             self.check_CQviewers_status_task: Optional[asyncio.Task] = None
 
+        self.logger.debug(msg=f"{self.__class__.__name__} instance created")
+
     async def start_initial_tasks(self) -> None:
+        self.logger.debug(msg="TaskManager is starting initial tasks...")
         await analysis_manager.check_and_generate_missing_manifest_files()
 
         return None
@@ -47,7 +50,11 @@ class TaskManager:
         Args:
             start (bool): If True, start the tasks; if False, stop them.
         """
+        self.logger.debug(msg=f"manage_docker_tasks called with start={start}")
         if start:
+            self.logger.debug(
+                msg="Starting analysis manager and summary plotter tasks."
+            )
             await analysis_manager.start()
             await summary_plotter.start()
         else:

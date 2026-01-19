@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from CQmanager.core.config import config
+from CQmanager.core.logging import logger
 from CQmanager.handlers.handlers import global_exception_handler
 from CQmanager.routers.router_analyse import router as analyse_router
 from CQmanager.routers.router_cleanups import router as cleanups_router
@@ -27,8 +29,9 @@ task_manager = TaskManager()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI, task_manager: TaskManager = task_manager):
+async def lifespan(app: FastAPI):
     """Manages what to start before the application and what to do after closing it"""
+    logger.debug(msg="Starting application lifespan")
 
     await task_manager.start_initial_tasks()
     await task_manager.manage_docker_tasks(start=True)
@@ -64,7 +67,7 @@ async def lifespan(app: FastAPI, task_manager: TaskManager = task_manager):
             pass
 
 
-app = FastAPI(lifespan=lifespan, task_manager=task_manager)  # type: ignore
+app = FastAPI(lifespan=lifespan)  # type: ignore
 app.exception_handler(exc_class_or_status_code=Exception)(global_exception_handler)
 app.include_router(router=analyse_router)
 app.include_router(router=status_router)
@@ -92,4 +95,5 @@ def run():
         reload=args.reload,
         timeout_keep_alive=30,
         timeout_graceful_shutdown=60,
+        log_level=config.log_level.lower(),
     )

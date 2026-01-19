@@ -264,6 +264,9 @@ def get_analyzed_sentrix_ids_dictionary(
         str, dict[str, dict[str, ArrayType | dict[CommonArrayType, bool]]]
     ] = dict()
 
+    if not analyzed_sentrix_ids_directory.exists():
+        return analyzed_sentrix_ids_dictionary
+
     sentrix_ids_directories: list[Path] = [
         directory
         for directory in analyzed_sentrix_ids_directory.iterdir()
